@@ -9,8 +9,9 @@
 
 <h1 class="text-3xl font-bold mb-6">📚 Book Club Voting</h1>
 
-<!-- Voting panel -->
-<div id="voting-container" class="w-full max-w-3xl mb-6">
+<div class="w-full max-w-3xl mb-6">
+
+  <!-- Voting panel -->
   <div id="vote-section" class="bg-white p-6 rounded-xl shadow-md mb-4">
     <label>Your Name:</label>
     <input id="name" class="w-full border rounded p-2 mb-2">
@@ -36,6 +37,12 @@
     <p id="status" class="text-sm mt-2 text-gray-600"></p>
   </div>
 
+  <!-- Voters -->
+  <div class="bg-white p-6 rounded-xl shadow-md mb-6">
+    <h3>Members Who Voted</h3>
+    <ul id="voter-list" class="list-disc ml-6"></ul>
+  </div>
+
   <!-- Results table -->
   <div id="results-container" class="bg-white p-6 rounded-xl shadow-md hidden">
     <h3>📊 Voting Results</h3>
@@ -55,6 +62,7 @@
 const API = "https://bookbook-1vj9.onrender.com";
 let allBooks = [];
 
+// Load books
 async function loadBooks() {
   const res = await fetch(`${API}/books`);
   allBooks = (await res.json()).map(b => ({id: b.id, title: b.title}));
@@ -81,10 +89,11 @@ function renderAvailableBooks() {
   });
 }
 
+// Setup drop zones
 function setupDropZones() {
   const zones = document.querySelectorAll(".drop-zone");
   zones.forEach(z => {
-    z.addEventListener("dragover", e => { e.preventDefault(); });
+    z.addEventListener("dragover", e => e.preventDefault());
     z.addEventListener("drop", e => {
       e.preventDefault();
       const id = e.dataTransfer.getData("text/plain");
@@ -99,6 +108,7 @@ function setupDropZones() {
   });
 }
 
+// Submit vote
 async function submitVote() {
   const name = document.getElementById("name").value.trim();
   const password = document.getElementById("password").value.trim();
@@ -124,27 +134,33 @@ async function submitVote() {
     });
     const data = await res.json();
     document.getElementById("status").textContent = data.error || "✅ Vote submitted!";
+    loadVoters();
+    loadResults();
   } catch(e) {
     console.error(e);
     document.getElementById("status").textContent = "Error submitting vote";
   }
 }
 
-document.getElementById("voteBtn").onclick = submitVote;
-
-async function checkVotingStatus() {
+// Load voters
+async function loadVoters() {
   try {
-    const res = await fetch(`${API}/voting_status`);
-    const {voting_open} = await res.json();
-    document.getElementById("voting-container").style.display = voting_open ? "block" : "none";
-    document.getElementById("results-container").style.display = voting_open ? "none" : "block";
-    if (!voting_open) loadResults();
+    const res = await fetch(`${API}/voters`);
+    const voters = await res.json();
+    const ul = document.getElementById("voter-list");
+    ul.innerHTML = '';
+    voters.forEach(v => {
+      const li = document.createElement("li");
+      li.textContent = v;
+      ul.appendChild(li);
+    });
   } catch(e) { console.error(e); }
 }
 
+// Load results
 async function loadResults() {
   try {
-    const res = await fetch(`${API}/admin/results?password=public`);
+    const res = await fetch(`${API}/results`);
     const results = await res.json();
     const tbody = document.getElementById("results-body");
     tbody.innerHTML = '';
@@ -155,13 +171,27 @@ async function loadResults() {
       tr.innerHTML = `<td class="border px-2 py-1">${r.title}</td><td class="border px-2 py-1">${voters}</td>`;
       tbody.appendChild(tr);
     }
-  } catch(e) { console.error("Error loading results", e); }
+  } catch(e) { console.error(e); }
+}
+
+// Check voting status
+async function checkVotingStatus() {
+  try {
+    const res = await fetch(`${API}/voting_status`);
+    const {voting_open} = await res.json();
+    document.getElementById("vote-section").style.display = voting_open ? "block" : "none";
+    document.getElementById("results-container").style.display = voting_open ? "none" : "block";
+    loadResults();
+  } catch(e) { console.error(e); }
 }
 
 // Init
 loadBooks().then(setupDropZones);
+loadVoters();
 checkVotingStatus();
 setInterval(checkVotingStatus, 5000);
+
+document.getElementById("voteBtn").onclick = submitVote;
 </script>
 </body>
 </html>
