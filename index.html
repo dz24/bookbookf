@@ -163,8 +163,7 @@
 
     // ---------------- Load Results ----------------
     async function loadResults() {
-      // You can create a public read-only endpoint on the backend or use the admin password
-      const res = await fetch(`${API}/admin/results?password=admin123`);
+      const res = await fetch(`${API}/admin/results?password=public`);
       const results = await res.json();
       const tbody = document.getElementById("results-body");
       tbody.innerHTML = '';
