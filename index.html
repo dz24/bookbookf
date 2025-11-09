@@ -18,7 +18,7 @@
 
     <div class="mb-4">
       <h3 class="font-semibold mb-2">📖 Available Books (drag to prioritize):</h3>
-      <div id="available-books" class="min-h-[100px] border-2 border-dashed border-gray-300 rounded p-3 bg-gray-50"></div>
+      <div id="available-books" class="min-h-[100px] border-2 border-dashed border-gray-300 rounded p-3 bg-gray-50 drop-zone"></div>
     </div>
 
     <div class="grid grid-cols-2 gap-4 mb-4">
@@ -43,12 +43,14 @@
   </div>
 
   <script>
-    const API = "https://bookbook-1vj9.onrender.com";
+    const API = "https://bookbook-1vj9.onrender.com"; // replace with your backend
     let allBooks = [];
 
     async function loadBooks() {
       const res = await fetch(`${API}/books`);
-      allBooks = await res.json();
+      const data = await res.json();
+      // Extract titles for display and store ids
+      allBooks = data.map(b => ({id: b.id, title: b.title}));
       renderAvailableBooks();
     }
 
@@ -56,26 +58,27 @@
       const container = document.getElementById("available-books");
       container.innerHTML = '';
       allBooks.forEach(book => {
-        const bookEl = createBookElement(book);
+        const bookEl = createBookElement(book.title, book.id);
         container.appendChild(bookEl);
       });
     }
 
-    function createBookElement(book) {
+    function createBookElement(title, id) {
       const div = document.createElement('div');
       div.className = 'book-item bg-white border border-gray-300 rounded px-3 py-2 mb-2 cursor-move hover:bg-gray-100 transition';
       div.draggable = true;
-      div.textContent = book;
-      div.dataset.book = book;
+      div.textContent = title;
+      div.dataset.book = title;
+      div.dataset.id = id;
 
       div.addEventListener('dragstart', (e) => {
         e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', book);
-        div.classList.add('opacity-50');
+        e.dataTransfer.setData('text/plain', id); // use id for drag identification
+        div.classList.add('dragging');
       });
 
       div.addEventListener('dragend', (e) => {
-        div.classList.remove('opacity-50');
+        div.classList.remove('dragging');
       });
 
       return div;
@@ -83,7 +86,7 @@
 
     function setupDropZones() {
       const dropZones = document.querySelectorAll('.drop-zone');
-      
+
       dropZones.forEach(zone => {
         zone.addEventListener('dragover', (e) => {
           e.preventDefault();
@@ -98,53 +101,23 @@
         zone.addEventListener('drop', (e) => {
           e.preventDefault();
           zone.classList.remove('border-solid', 'bg-opacity-70');
-          
-          const book = e.dataTransfer.getData('text/plain');
-          
-          // Remove book from its current location
-          const existingBook = zone.querySelector('.book-item');
-          if (existingBook) {
-            // Return existing book to available books
-            document.getElementById('available-books').appendChild(existingBook);
+
+          const id = e.dataTransfer.getData('text/plain');
+          const draggedBook = Array.from(document.querySelectorAll('.book-item.dragging'))
+                                   .find(el => el.dataset.id === id);
+          if (!draggedBook) return;
+
+          // Remove from current parent
+          draggedBook.parentElement.removeChild(draggedBook);
+
+          // If dropping into first/second, replace existing book there
+          const existing = zone.querySelector('.book-item');
+          if (existing) {
+            document.getElementById('available-books').appendChild(existing);
           }
 
-          // Find and move the dragged book
-          const draggedBook = Array.from(document.querySelectorAll('.book-item')).find(el => 
-            el.dataset.book === book && el.classList.contains('opacity-50')
-          );
-          
-          if (draggedBook) {
-            zone.appendChild(draggedBook);
-          } else {
-            // If we can't find the dragged element, create a new one
-            const bookEl = createBookElement(book);
-            zone.appendChild(bookEl);
-          }
+          zone.appendChild(draggedBook);
         });
-      });
-
-      // Make available books area also a drop zone
-      const availableZone = document.getElementById('available-books');
-      availableZone.classList.add('drop-zone');
-      
-      availableZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-      });
-
-      availableZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        const book = e.dataTransfer.getData('text/plain');
-        
-        // Find the dragged book element
-        const draggedBook = Array.from(document.querySelectorAll('.book-item')).find(el => 
-          el.dataset.book === book && el.classList.contains('opacity-50')
-        );
-        
-        if (draggedBook && draggedBook.parentElement.id !== 'available-books') {
-          // Move it back to available books
-          availableZone.appendChild(draggedBook);
-        }
       });
     }
 
@@ -157,16 +130,16 @@
     async function submitVote() {
       const name = document.getElementById("name").value.trim();
       const password = document.getElementById("password").value.trim();
-      
+
       const firstEl = document.querySelector("#first-priority .book-item");
       const secondEl = document.querySelector("#second-priority .book-item");
-      
-      const first = firstEl?.dataset.book;
-      const second = secondEl?.dataset.book;
+
+      const first_id = firstEl?.dataset.id;
+      const second_id = secondEl?.dataset.id;
 
       const status = document.getElementById("status");
 
-      if (!name || !password || !first || !second) {
+      if (!name || !password || !first_id || !second_id) {
         status.textContent = "⚠️ Please fill out everything and drag books to both priority slots.";
         return;
       }
@@ -174,7 +147,7 @@
       const res = await fetch(`${API}/vote`, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ name, password, first_choice: first, second_choice: second })
+        body: JSON.stringify({ name, password, first_choice_id: first_id, second_choice_id: second_id })
       });
 
       const data = await res.json();
