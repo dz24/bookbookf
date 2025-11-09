@@ -76,11 +76,7 @@
         e.dataTransfer.setData("text/plain", book.id);
         div.classList.add("opacity-50");
       });
-
-      div.addEventListener("dragend", () => {
-        div.classList.remove("opacity-50");
-      });
-
+      div.addEventListener("dragend", () => div.classList.remove("opacity-50"));
       return div;
     }
 
@@ -92,9 +88,7 @@
           e.dataTransfer.dropEffect = "move";
           zone.classList.add("border-solid", "border-4");
         });
-        zone.addEventListener("dragleave", () => {
-          zone.classList.remove("border-solid", "border-4");
-        });
+        zone.addEventListener("dragleave", () => zone.classList.remove("border-solid", "border-4"));
         zone.addEventListener("drop", e => {
           e.preventDefault();
           zone.classList.remove("border-solid", "border-4");
@@ -108,17 +102,12 @@
       });
 
       const available = document.getElementById("available-books");
-      available.addEventListener("dragover", e => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = "move";
-      });
+      available.addEventListener("dragover", e => e.preventDefault());
       available.addEventListener("drop", e => {
         e.preventDefault();
         const bookId = e.dataTransfer.getData("text/plain");
         const dragged = document.querySelector(`[data-id='${bookId}']`);
-        if (dragged && dragged.parentElement !== available) {
-          available.appendChild(dragged);
-        }
+        if (dragged && dragged.parentElement !== available) available.appendChild(dragged);
       });
     }
 
@@ -141,14 +130,12 @@
         return;
       }
 
-      // show loading spinner
       btn.disabled = true;
       btn.innerHTML = `
         <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-        </svg>
-        Submitting...
+        </svg> Submitting...
       `;
       status.textContent = "";
 
@@ -159,13 +146,10 @@
           body: JSON.stringify({ name, password, first_choice: first, second_choice: second })
         });
         const data = await res.json();
-
         if (res.ok) {
           status.textContent = "✅ Vote submitted!";
           loadVoters();
-        } else {
-          status.textContent = `❌ ${data.error || "Error submitting vote."}`;
-        }
+        } else status.textContent = `❌ ${data.error || "Error submitting vote."}`;
       } catch {
         status.textContent = "❌ Network error. Please try again.";
       } finally {
@@ -182,8 +166,8 @@
 
       if (!cfg.voting_open) {
         document.getElementById("vote-section").innerHTML = `
-          <h2 class="text-2xl font-bold mb-4">📊 Voting Results</h2>
-          <p class="text-gray-600 mb-4">(Voting is now closed)</p>
+          <h2 class="text-2xl font-bold mb-1">📊 ${cfg.round_title || "Voting Results"}</h2>
+          <p class="text-gray-600 mb-4">Round ${cfg.round_number} — Voting is now closed</p>
           <div id="resultsTable" class="overflow-x-auto"></div>
         `;
         loadResults();
@@ -192,32 +176,31 @@
 
     async function loadResults() {
       const res = await fetch(`${API}/admin/read_backup?password=admin123`);
-      const votes = await res.json();
+      const data = await res.json();
 
-      if (!Array.isArray(votes)) {
+      if (!data.books || !Array.isArray(data.votes)) {
         document.getElementById("resultsTable").innerHTML =
-          "<p class='text-red-500'>⚠️ Unable to load results.</p>";
+          "<p class='text-red-500'>⚠️ Invalid data in backup.</p>";
         return;
       }
 
+      const { books, votes } = data;
       const points = {};
       const voters = {};
+
       votes.forEach(v => {
         const f = v.first_choice, s = v.second_choice;
         points[f] = (points[f] || 0) + 2;
         points[s] = (points[s] || 0) + 1;
-        voters[f] = (voters[f] || []).concat(`${v.name} (2)`);
-        voters[s] = (voters[s] || []).concat(`${v.name} (1)`);
+        const time = new Date(v.timestamp).toLocaleString();
+        voters[f] = (voters[f] || []).concat(`${v.name} (2) — ${time}`);
+        voters[s] = (voters[s] || []).concat(`${v.name} (1) — ${time}`);
       });
 
-      const booksRes = await fetch(`${API}/books`);
-      const books = await booksRes.json();
-      const bookMap = Object.fromEntries(books.map(b => [String(b.id), b.title]));
-
-      const results = Object.entries(bookMap).map(([id, title]) => ({
-        title,
-        points: points[id] || 0,
-        voters: voters[id] || []
+      const results = books.map(b => ({
+        title: b.title,
+        points: points[b.id] || 0,
+        voters: voters[b.id] || []
       }));
 
       results.sort((a, b) => b.points - a.points);
@@ -229,7 +212,7 @@
             <tr>
               <th class="px-4 py-2">Book</th>
               <th class="px-4 py-2">Points</th>
-              <th class="px-4 py-2">Voters (Priority)</th>
+              <th class="px-4 py-2">Voters (Priority & Time)</th>
             </tr>
           </thead>
           <tbody>
@@ -240,7 +223,7 @@
           <tr class="${highlight}">
             <td class="border px-4 py-2">${r.title}</td>
             <td class="border px-4 py-2">${r.points}</td>
-            <td class="border px-4 py-2">${r.voters.join(", ") || "-"}</td>
+            <td class="border px-4 py-2 text-sm">${r.voters.join("<br>") || "-"}</td>
           </tr>
         `;
       });
