@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Book Book Club Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col items-center justify-start p-6">
+
+  <h1 class="text-3xl font-bold mb-6">🔒 Book Book Club Admin</h1>
+
+  <div id="admin-section" class="bg-white p-6 rounded-xl shadow-md w-full max-w-3xl mb-6">
+    <label class="block mb-2 font-semibold">Admin Password:</label>
+    <input id="admin-password" type="password" class="w-full border rounded p-2 mb-3" placeholder="Enter admin password">
+
+    <div class="flex gap-2 mb-4">
+      <button id="open-voting" class="bg-green-500 text-white px-4 py-2 rounded">Open Voting</button>
+      <button id="close-voting" class="bg-red-500 text-white px-4 py-2 rounded">Close Voting</button>
+    </div>
+
+    <button id="toggle-view" class="bg-gray-500 text-white w-full py-2 rounded-lg hover:bg-gray-600 mb-4">
+      Toggle Voters / Results
+    </button>
+
+    <div id="voters-container">
+      <h3 class="font-semibold mb-2">Members who have voted:</h3>
+      <ul id="voterList" class="list-disc ml-6 text-sm text-gray-700"></ul>
+    </div>
+
+    <div id="admin-results-container" class="hidden">
+      <h3 class="font-semibold mb-2">Vote Results (User - Priority)</h3>
+      <table class="w-full border border-gray-300 rounded">
+        <thead class="bg-gray-200">
+          <tr>
+            <th class="border px-2 py-1">Book</th>
+            <th class="border px-2 py-1">Voters</th>
+          </tr>
+        </thead>
+        <tbody id="results-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const API = "https://bookbook-1vj9.onrender.com";
+    let showResultsView = false;
+
+    async function loadVoters() {
+      const res = await fetch(`${API}/voters`);
+      const voters = await res.json();
+      document.getElementById("voterList").innerHTML = voters.map(v => `<li>${v}</li>`).join("");
+    }
+
+    async function showAdminResults() {
+      const password = document.getElementById("admin-password").value.trim();
+      if (!password) return alert("Enter admin password");
+
+      const res = await fetch(`${API}/admin/results?password=${encodeURIComponent(password)}`);
+      const results = await res.json();
+      if (results.error) return alert(results.error);
+
+      const tbody = document.getElementById("results-body");
+      tbody.innerHTML = '';
+      for (const id in results) {
+        const r = results[id];
+        const voters = (r.votes || []).map(v => `${v.name} (${v.priority})`).join(", ");
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td class="border px-2 py-1">${r.title}</td><td class="border px-2 py-1">${voters}</td>`;
+        tbody.appendChild(tr);
+      }
+    }
+
+    async function setVoting(open) {
+      const password = document.getElementById("admin-password").value.trim();
+      if (!password) return alert("Enter admin password");
+
+      const res = await fetch(`${API}/admin/set_voting_state`, {
+        method:"POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ password, voting_open: open })
+      });
+      const data = await res.json();
+      if (data.error) return alert(data.error);
+      alert(`Voting is now ${open ? "OPEN" : "CLOSED"}`);
+    }
+
+    document.getElementById("open-voting").onclick = () => setVoting(true);
+    document.getElementById("close-voting").onclick = () => setVoting(false);
+
+    document.getElementById("toggle-view").onclick = () => {
+      showResultsView = !showResultsView;
+      document.getElementById("voters-container").style.display = showResultsView ? "none" : "block";
+      document.getElementById("admin-results-container").style.display = showResultsView ? "block" : "none";
+      if (showResultsView) showAdminResults();
+      else loadVoters();
+    };
+
+    loadVoters();
+  </script>
+</body>
+</html>

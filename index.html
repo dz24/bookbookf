@@ -9,67 +9,41 @@
 
   <h1 class="text-3xl font-bold mb-6">📚 Book Book Club Voting</h1>
 
-  <!-- Vote Section -->
-  <div id="vote-section" class="bg-white p-6 rounded-xl shadow-md w-full max-w-3xl mb-6">
-    <label class="block mb-2 font-semibold">Your Name:</label>
-    <input id="name" class="w-full border rounded p-2 mb-3" placeholder="Your name">
+  <div id="voting-container">
+    <div id="vote-section" class="bg-white p-6 rounded-xl shadow-md w-full max-w-3xl mb-6">
+      <label class="block mb-2 font-semibold">Your Name:</label>
+      <input id="name" class="w-full border rounded p-2 mb-3" placeholder="Your name">
 
-    <label class="block mb-2 font-semibold">Password:</label>
-    <input id="password" type="password" class="w-full border rounded p-2 mb-4" placeholder="Club password">
+      <label class="block mb-2 font-semibold">Password:</label>
+      <input id="password" type="password" class="w-full border rounded p-2 mb-4" placeholder="Club password">
 
-    <div class="mb-4">
-      <h3 class="font-semibold mb-2">📖 Available Books (drag to prioritize):</h3>
-      <div id="available-books" class="min-h-[100px] border-2 border-dashed border-gray-300 rounded p-3 bg-gray-50 drop-zone"></div>
-    </div>
-
-    <div class="grid grid-cols-2 gap-4 mb-4">
-      <div>
-        <h3 class="font-semibold mb-2">🥇 First Priority:</h3>
-        <div id="first-priority" class="min-h-[80px] border-2 border-dashed border-blue-300 rounded p-3 bg-blue-50 drop-zone"></div>
+      <div class="mb-4">
+        <h3 class="font-semibold mb-2">📖 Available Books (drag to prioritize):</h3>
+        <div id="available-books" class="min-h-[100px] border-2 border-dashed border-gray-300 rounded p-3 bg-gray-50 drop-zone"></div>
       </div>
-      <div>
-        <h3 class="font-semibold mb-2">🥈 Second Priority:</h3>
-        <div id="second-priority" class="min-h-[80px] border-2 border-dashed border-green-300 rounded p-3 bg-green-50 drop-zone"></div>
+
+      <div class="grid grid-cols-2 gap-4 mb-4">
+        <div>
+          <h3 class="font-semibold mb-2">🥇 First Priority:</h3>
+          <div id="first-priority" class="min-h-[80px] border-2 border-dashed border-blue-300 rounded p-3 bg-blue-50 drop-zone"></div>
+        </div>
+        <div>
+          <h3 class="font-semibold mb-2">🥈 Second Priority:</h3>
+          <div id="second-priority" class="min-h-[80px] border-2 border-dashed border-green-300 rounded p-3 bg-green-50 drop-zone"></div>
+        </div>
       </div>
-    </div>
 
-    <button id="voteBtn" class="bg-blue-600 text-white w-full py-2 rounded-lg hover:bg-blue-700">Submit Vote</button>
-
-    <p id="status" class="text-sm text-gray-600 mt-3"></p>
-  </div>
-
-  <!-- Voter List -->
-  <div class="w-full max-w-3xl mb-6">
-    <h2 class="font-bold mb-2">Members who have voted:</h2>
-    <ul id="voterList" class="list-disc ml-6 text-sm text-gray-700"></ul>
-  </div>
-
-  <!-- Admin Panel -->
-  <div id="admin-section" class="bg-white p-6 rounded-xl shadow-md w-full max-w-3xl">
-    <h2 class="font-bold mb-4">🔒 Admin Panel</h2>
-    <label class="block mb-2 font-semibold">Admin Password:</label>
-    <input id="admin-password" type="password" class="w-full border rounded p-2 mb-3" placeholder="Enter admin password">
-    <button id="show-results" class="bg-gray-700 text-white w-full py-2 rounded-lg hover:bg-gray-800 mb-4">Show Vote Results</button>
-
-    <div id="admin-results" class="hidden">
-      <h3 class="font-semibold mb-2">Vote Results (User - Priority)</h3>
-      <table class="w-full border border-gray-300 rounded">
-        <thead class="bg-gray-200">
-          <tr>
-            <th class="border px-2 py-1">Book</th>
-            <th class="border px-2 py-1">Voters</th>
-          </tr>
-        </thead>
-        <tbody id="results-body"></tbody>
-      </table>
+      <button id="voteBtn" class="bg-blue-600 text-white w-full py-2 rounded-lg hover:bg-blue-700">Submit Vote</button>
+      <p id="status" class="text-sm text-gray-600 mt-3"></p>
     </div>
   </div>
+
+  <a href="admin.html" class="text-blue-600 underline mb-6">Admin login</a>
 
   <script>
-    const API = "https://bookbook-1vj9.onrender.com"; // replace with your backend
+    const API = "https://bookbook-1vj9.onrender.com";
     let allBooks = [];
 
-    // ---------- Load Books ----------
     async function loadBooks() {
       const res = await fetch(`${API}/books`);
       const data = await res.json();
@@ -97,115 +71,69 @@
         div.classList.add('dragging');
       });
 
-      div.addEventListener('dragend', e => {
-        div.classList.remove('dragging');
-      });
-
+      div.addEventListener('dragend', e => div.classList.remove('dragging'));
       return div;
     }
 
     function setupDropZones() {
       const dropZones = document.querySelectorAll('.drop-zone');
       dropZones.forEach(zone => {
-        zone.addEventListener('dragover', e => {
-          e.preventDefault();
-          zone.classList.add('border-solid', 'bg-opacity-70');
-        });
-        zone.addEventListener('dragleave', e => zone.classList.remove('border-solid', 'bg-opacity-70'));
+        zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('border-solid','bg-opacity-70'); });
+        zone.addEventListener('dragleave', e => zone.classList.remove('border-solid','bg-opacity-70'));
         zone.addEventListener('drop', e => {
           e.preventDefault();
-          zone.classList.remove('border-solid', 'bg-opacity-70');
-
+          zone.classList.remove('border-solid','bg-opacity-70');
           const id = e.dataTransfer.getData('text/plain');
-          const draggedBook = Array.from(document.querySelectorAll('.book-item.dragging'))
-                                   .find(el => el.dataset.id === id);
+          const draggedBook = Array.from(document.querySelectorAll('.book-item.dragging')).find(el => el.dataset.id === id);
           if (!draggedBook) return;
-
           draggedBook.parentElement.removeChild(draggedBook);
 
-          // Replace existing in first/second if needed
           const existing = zone.querySelector('.book-item');
           if (existing) document.getElementById('available-books').appendChild(existing);
-
           zone.appendChild(draggedBook);
         });
       });
     }
 
-    // ---------- Load Voters ----------
-    async function loadVoters() {
-      const res = await fetch(`${API}/voters`);
-      const voters = await res.json();
-      document.getElementById("voterList").innerHTML = voters.map(v => `<li>${v}</li>`).join("");
-    }
-
-    // ---------- Submit Vote ----------
     async function submitVote() {
       const name = document.getElementById("name").value.trim();
       const password = document.getElementById("password").value.trim();
-
       const firstEl = document.querySelector("#first-priority .book-item");
       const secondEl = document.querySelector("#second-priority .book-item");
-
       const first_id = firstEl?.dataset.id;
       const second_id = secondEl?.dataset.id;
-
       const status = document.getElementById("status");
 
       if (!name || !password || !first_id || !second_id) {
-        status.textContent = "⚠️ Please fill out everything and drag books to both priority slots.";
+        status.textContent = "⚠️ Fill everything and drag books to both priority slots.";
         return;
       }
 
       const res = await fetch(`${API}/vote`, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ name, password, first_choice_id: first_id, second_choice_id: second_id })
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ name, password, first_choice_id:first_id, second_choice_id:second_id })
       });
 
       const data = await res.json();
       if (data.error) status.textContent = `❌ ${data.error}`;
-      else {
-        status.textContent = "✅ Vote submitted!";
-        loadVoters();
-      }
+      else status.textContent = "✅ Vote submitted!";
     }
 
     document.getElementById("voteBtn").onclick = submitVote;
 
-    // ---------- Admin Results ----------
-    async function showAdminResults() {
-      const adminPassword = document.getElementById("admin-password").value.trim();
-      if (!adminPassword) return alert("Enter admin password");
-
-      // Fetch with password in query parameter
-      const res = await fetch(`${API}/admin/results?password=${encodeURIComponent(adminPassword)}`);
-      const results = await res.json();
-
-      if (results.error) return alert(results.error); // handle 403 etc.
-
-      const tbody = document.getElementById("results-body");
-      tbody.innerHTML = '';
-
-      for (const id in results) {
-        const r = results[id];
-        const voters = (r.votes || []).map(v => `${v.name} (${v.priority})`).join(", ");
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td class="border px-2 py-1">${r.title}</td>
-          <td class="border px-2 py-1">${voters}</td>
-        `;
-        tbody.appendChild(tr);
-      }
-
-      document.getElementById("admin-results").classList.remove("hidden");
+    // -------- Check voting state ----------
+    async function checkVotingStatus() {
+      try {
+        const res = await fetch(`${API}/voting_status`);
+        const data = await res.json();
+        document.getElementById("voting-container").style.display = data.voting_open ? "block" : "none";
+      } catch(e) { console.error("Failed to fetch voting status", e); }
     }
 
-    document.getElementById("show-results").onclick = showAdminResults;
-
-    // ---------- Initialize ----------
     loadBooks().then(setupDropZones);
-    loadVoters();
+    checkVotingStatus();
+    setInterval(checkVotingStatus, 5000); // poll every 5s
   </script>
 </body>
 </html>
