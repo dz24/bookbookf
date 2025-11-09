@@ -17,10 +17,13 @@
   <div class="max-w-3xl w-full bg-white p-6 rounded-2xl shadow-md">
     <h1 class="text-3xl font-bold mb-6 text-center">📚 Book Club Voting</h1>
 
-    <!-- Voting Form -->
+    <!-- Voting Section -->
     <div id="voting-section">
       <label class="block font-medium mb-2">Your Name:</label>
       <input id="name" type="text" class="w-full border rounded-lg p-2 mb-4" placeholder="Enter your name">
+
+      <label class="block font-medium mb-2">Club Password:</label>
+      <input id="password" type="password" class="w-full border rounded-lg p-2 mb-4" placeholder="Enter club password">
 
       <h3 class="text-lg font-semibold mb-2">Available Books</h3>
       <div id="available-books" class="border-2 border-dashed border-gray-300 rounded-lg p-4 min-h-[120px] bg-gray-50 mb-6"></div>
@@ -41,7 +44,9 @@
         Submit Vote
       </button>
 
-      <!-- Voter list -->
+      <p id="status" class="text-sm text-gray-600 mt-3"></p>
+
+      <!-- Voter List -->
       <div class="mt-6">
         <h3 class="text-lg font-semibold mb-2">🗳️ Members who have voted</h3>
         <ul id="voterList" class="list-disc ml-6 text-gray-700"></ul>
@@ -87,7 +92,6 @@
     async function loadBooks() {
       const res = await fetch(`${API}/books`);
       allBooks = await res.json();
-
       const container = document.getElementById("available-books");
       container.innerHTML = "";
       allBooks.forEach(book => container.appendChild(createBookElement(book)));
@@ -113,7 +117,6 @@
 
     function setupDragAndDrop() {
       const dropZones = document.querySelectorAll(".drop-zone, #available-books");
-
       document.querySelectorAll(".draggable").forEach(el => {
         el.addEventListener("dragstart", e => {
           e.dataTransfer.setData("text/plain", e.target.dataset.id);
@@ -147,7 +150,6 @@
         document.querySelector("#first-priority .book-item")?.dataset.id,
         document.querySelector("#second-priority .book-item")?.dataset.id
       ].filter(Boolean);
-
       document.querySelectorAll("#available-books .book-item").forEach(el => {
         el.classList.toggle("disabled", chosenIds.includes(el.dataset.id));
       });
@@ -155,25 +157,30 @@
 
     document.getElementById("voteBtn").addEventListener("click", async () => {
       const name = document.getElementById("name").value.trim();
+      const password = document.getElementById("password").value.trim();
       const first = document.querySelector("#first-priority .book-item")?.dataset.id;
       const second = document.querySelector("#second-priority .book-item")?.dataset.id;
 
-      if (!name || !first || !second) {
-        alert("Please enter your name and drag two books into the slots.");
+      const status = document.getElementById("status");
+      status.textContent = "";
+
+      if (!name || !password || !first || !second) {
+        status.textContent = "⚠️ Please fill in your name, password, and select two books.";
         return;
       }
 
       const res = await fetch(`${API}/vote`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, first_choice: first, second_choice: second })
+        body: JSON.stringify({ name, password, first_choice: first, second_choice: second })
       });
 
+      const data = await res.json();
       if (res.ok) {
-        alert("✅ Vote submitted!");
+        status.textContent = "✅ Vote submitted!";
         loadVoters();
       } else {
-        alert("❌ Error submitting vote.");
+        status.textContent = `❌ ${data.error || "Error submitting vote."}`;
       }
     });
 
