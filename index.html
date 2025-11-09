@@ -1,47 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Book Book Club Voting</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="UTF-8">
+<title>Book Club Voting</title>
+<script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col items-center justify-start p-6">
+<body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col items-center p-6">
 
-  <h1 class="text-3xl font-bold mb-6">📚 Book Book Club Voting</h1>
+<h1 class="text-3xl font-bold mb-6">📚 Book Club Voting</h1>
 
-  <!-- Voting Panel -->
-  <div id="voting-container">
-    <div id="vote-section" class="bg-white p-6 rounded-xl shadow-md w-full max-w-3xl mb-6">
-      <label class="block mb-2 font-semibold">Your Name:</label>
-      <input id="name" class="w-full border rounded p-2 mb-3" placeholder="Your name">
+<!-- Voting panel -->
+<div id="voting-container" class="w-full max-w-3xl mb-6">
+  <div id="vote-section" class="bg-white p-6 rounded-xl shadow-md mb-4">
+    <label>Your Name:</label>
+    <input id="name" class="w-full border rounded p-2 mb-2">
 
-      <label class="block mb-2 font-semibold">Password:</label>
-      <input id="password" type="password" class="w-full border rounded p-2 mb-4" placeholder="Club password">
+    <label>Password:</label>
+    <input id="password" type="password" class="w-full border rounded p-2 mb-4">
 
-      <div class="mb-4">
-        <h3 class="font-semibold mb-2">📖 Available Books (drag to prioritize):</h3>
-        <div id="available-books" class="min-h-[100px] border-2 border-dashed border-gray-300 rounded p-3 bg-gray-50 drop-zone"></div>
+    <h3>Available Books (drag to prioritize)</h3>
+    <div id="available-books" class="min-h-[100px] border-2 border-dashed p-2 mb-4 drop-zone"></div>
+
+    <div class="grid grid-cols-2 gap-4 mb-4">
+      <div>
+        <h3>🥇 First Priority</h3>
+        <div id="first-priority" class="min-h-[80px] border-2 border-dashed p-2 drop-zone bg-blue-50"></div>
       </div>
-
-      <div class="grid grid-cols-2 gap-4 mb-4">
-        <div>
-          <h3 class="font-semibold mb-2">🥇 First Priority:</h3>
-          <div id="first-priority" class="min-h-[80px] border-2 border-dashed border-blue-300 rounded p-3 bg-blue-50 drop-zone"></div>
-        </div>
-        <div>
-          <h3 class="font-semibold mb-2">🥈 Second Priority:</h3>
-          <div id="second-priority" class="min-h-[80px] border-2 border-dashed border-green-300 rounded p-3 bg-green-50 drop-zone"></div>
-        </div>
+      <div>
+        <h3>🥈 Second Priority</h3>
+        <div id="second-priority" class="min-h-[80px] border-2 border-dashed p-2 drop-zone bg-green-50"></div>
       </div>
-
-      <button id="voteBtn" class="bg-blue-600 text-white w-full py-2 rounded-lg hover:bg-blue-700">Submit Vote</button>
-      <p id="status" class="text-sm text-gray-600 mt-3"></p>
     </div>
+
+    <button id="voteBtn" class="bg-blue-600 text-white w-full py-2 rounded">Submit Vote</button>
+    <p id="status" class="text-sm mt-2 text-gray-600"></p>
   </div>
 
-  <!-- Results Table (hidden until voting closed) -->
-  <div id="results-container" class="bg-white p-6 rounded-xl shadow-md w-full max-w-3xl mb-6 hidden">
-    <h3 class="font-semibold mb-2">📊 Voting Results</h3>
+  <!-- Results table -->
+  <div id="results-container" class="bg-white p-6 rounded-xl shadow-md hidden">
+    <h3>📊 Voting Results</h3>
     <table class="w-full border border-gray-300 rounded">
       <thead class="bg-gray-200">
         <tr>
@@ -52,140 +49,119 @@
       <tbody id="results-body"></tbody>
     </table>
   </div>
+</div>
 
-  <a href="admin.html" class="text-blue-600 underline mb-6">Admin login</a>
+<script>
+const API = "https://bookbook-1vj9.onrender.com";
+let allBooks = [];
 
-  <script>
-    const API = "https://bookbook-1vj9.onrender.com";
-    let allBooks = [];
+async function loadBooks() {
+  const res = await fetch(`${API}/books`);
+  allBooks = (await res.json()).map(b => ({id: b.id, title: b.title}));
+  renderAvailableBooks();
+}
 
-    async function loadBooks() {
-      const res = await fetch(`${API}/books`);
-      const data = await res.json();
-      allBooks = data.map(b => ({id: b.id, title: b.title}));
-      renderAvailableBooks();
+function renderAvailableBooks() {
+  const container = document.getElementById("available-books");
+  container.innerHTML = '';
+  allBooks.forEach(b => {
+    const div = document.createElement("div");
+    div.textContent = b.title;
+    div.dataset.id = b.id;
+    div.className = "book-item bg-white border rounded px-2 py-1 mb-1 cursor-move";
+    div.draggable = true;
+
+    div.addEventListener("dragstart", e => {
+      e.dataTransfer.setData("text/plain", b.id);
+      div.classList.add("dragging");
+    });
+    div.addEventListener("dragend", e => div.classList.remove("dragging"));
+
+    container.appendChild(div);
+  });
+}
+
+function setupDropZones() {
+  const zones = document.querySelectorAll(".drop-zone");
+  zones.forEach(z => {
+    z.addEventListener("dragover", e => { e.preventDefault(); });
+    z.addEventListener("drop", e => {
+      e.preventDefault();
+      const id = e.dataTransfer.getData("text/plain");
+      const dragged = Array.from(document.querySelectorAll(".dragging")).find(el => el.dataset.id === id);
+      if (!dragged) return;
+      dragged.parentElement.removeChild(dragged);
+
+      const existing = z.querySelector(".book-item");
+      if (existing) document.getElementById("available-books").appendChild(existing);
+      z.appendChild(dragged);
+    });
+  });
+}
+
+async function submitVote() {
+  const name = document.getElementById("name").value.trim();
+  const password = document.getElementById("password").value.trim();
+  const firstEl = document.querySelector("#first-priority .book-item");
+  const secondEl = document.querySelector("#second-priority .book-item");
+
+  if (!name || !password || !firstEl || !secondEl) {
+    document.getElementById("status").textContent = "Fill all fields and assign books.";
+    return;
+  }
+
+  const body = {
+    name, password,
+    first_choice_id: firstEl.dataset.id,
+    second_choice_id: secondEl.dataset.id
+  };
+
+  try {
+    const res = await fetch(`${API}/vote`, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(body)
+    });
+    const data = await res.json();
+    document.getElementById("status").textContent = data.error || "✅ Vote submitted!";
+  } catch(e) {
+    console.error(e);
+    document.getElementById("status").textContent = "Error submitting vote";
+  }
+}
+
+document.getElementById("voteBtn").onclick = submitVote;
+
+async function checkVotingStatus() {
+  try {
+    const res = await fetch(`${API}/voting_status`);
+    const {voting_open} = await res.json();
+    document.getElementById("voting-container").style.display = voting_open ? "block" : "none";
+    document.getElementById("results-container").style.display = voting_open ? "none" : "block";
+    if (!voting_open) loadResults();
+  } catch(e) { console.error(e); }
+}
+
+async function loadResults() {
+  try {
+    const res = await fetch(`${API}/admin/results?password=public`);
+    const results = await res.json();
+    const tbody = document.getElementById("results-body");
+    tbody.innerHTML = '';
+    for (const id in results) {
+      const r = results[id];
+      const voters = r.votes.map(v => `${v.name} (${v.priority})`).join(", ");
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td class="border px-2 py-1">${r.title}</td><td class="border px-2 py-1">${voters}</td>`;
+      tbody.appendChild(tr);
     }
+  } catch(e) { console.error("Error loading results", e); }
+}
 
-    function renderAvailableBooks() {
-      const container = document.getElementById("available-books");
-      container.innerHTML = '';
-      allBooks.forEach(book => container.appendChild(createBookElement(book.title, book.id)));
-    }
-
-    function createBookElement(title, id) {
-      const div = document.createElement('div');
-      div.className = 'book-item bg-white border border-gray-300 rounded px-3 py-2 mb-2 cursor-move hover:bg-gray-100 transition';
-      div.draggable = true;
-      div.textContent = title;
-      div.dataset.book = title;
-      div.dataset.id = id;
-
-      div.addEventListener('dragstart', e => {
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', id);
-        div.classList.add('dragging');
-      });
-      div.addEventListener('dragend', e => div.classList.remove('dragging'));
-      return div;
-    }
-
-    function setupDropZones() {
-      const dropZones = document.querySelectorAll('.drop-zone');
-      dropZones.forEach(zone => {
-        zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('border-solid','bg-opacity-70'); });
-        zone.addEventListener('dragleave', e => zone.classList.remove('border-solid','bg-opacity-70'));
-        zone.addEventListener('drop', e => {
-          e.preventDefault();
-          zone.classList.remove('border-solid','bg-opacity-70');
-          const id = e.dataTransfer.getData('text/plain');
-          const draggedBook = Array.from(document.querySelectorAll('.book-item.dragging')).find(el => el.dataset.id === id);
-          if (!draggedBook) return;
-          draggedBook.parentElement.removeChild(draggedBook);
-
-          const existing = zone.querySelector('.book-item');
-          if (existing) document.getElementById('available-books').appendChild(existing);
-          zone.appendChild(draggedBook);
-        });
-      });
-    }
-
-    async function submitVote() {
-      const name = document.getElementById("name").value.trim();
-      const password = document.getElementById("password").value.trim();
-      const firstEl = document.querySelector("#first-priority .book-item");
-      const secondEl = document.querySelector("#second-priority .book-item");
-      const first_id = firstEl?.dataset.id;
-      const second_id = secondEl?.dataset.id;
-      const status = document.getElementById("status");
-
-      if (!name || !password || !first_id || !second_id) {
-        status.textContent = "⚠️ Fill everything and drag books to both priority slots.";
-        return;
-      }
-
-      try {
-        const res = await fetch(`${API}/vote`, {
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({ name, password, first_choice_id:first_id, second_choice_id:second_id })
-        });
-        const data = await res.json();
-        if (data.error) status.textContent = `❌ ${data.error}`;
-        else status.textContent = "✅ Vote submitted!";
-      } catch (e) {
-        status.textContent = "❌ Error submitting vote";
-        console.error(e);
-      }
-    }
-
-    document.getElementById("voteBtn").onclick = submitVote;
-
-    async function checkVotingStatus() {
-      try {
-        const res = await fetch(`${API}/voting_status`);
-        const data = await res.json();
-        const voteContainer = document.getElementById("voting-container");
-        const resultsContainer = document.getElementById("results-container");
-
-        if (data.voting_open) {
-          voteContainer.style.display = "block";
-          resultsContainer.style.display = "none";
-        } else {
-          voteContainer.style.display = "none";
-          resultsContainer.style.display = "block";
-          loadResults();
-        }
-      } catch(e) {
-        console.error("Failed to fetch voting status", e);
-      }
-    }
-
-    async function loadResults() {
-      try {
-        const res = await fetch(`${API}/admin/results?password=public`);
-        if (!res.ok) {
-          console.error("Failed to fetch results:", await res.text());
-          return;
-        }
-        const results = await res.json();
-        const tbody = document.getElementById("results-body");
-        tbody.innerHTML = '';
-
-        for (const id in results) {
-          const r = results[id];
-          const voters = (r.votes || []).map(v => `${v.name} (${v.priority})`).join(", ");
-          const tr = document.createElement("tr");
-          tr.innerHTML = `<td class="border px-2 py-1">${r.title}</td><td class="border px-2 py-1">${voters}</td>`;
-          tbody.appendChild(tr);
-        }
-      } catch(e) {
-        console.error("Error loading results:", e);
-      }
-    }
-
-    loadBooks().then(setupDropZones);
-    checkVotingStatus();
-    setInterval(checkVotingStatus, 5000);
-  </script>
+// Init
+loadBooks().then(setupDropZones);
+checkVotingStatus();
+setInterval(checkVotingStatus, 5000);
+</script>
 </body>
 </html>
