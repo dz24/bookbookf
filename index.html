@@ -9,81 +9,143 @@
 
   <h1 class="text-3xl font-bold mb-6">📚 Book Book Club Voting</h1>
 
-  <div id="vote-section" class="bg-white p-6 rounded-xl shadow-md w-full max-w-md">
+  <div id="vote-section" class="bg-white p-6 rounded-xl shadow-md w-full max-w-3xl">
     <label class="block mb-2 font-semibold">Your Name:</label>
     <input id="name" class="w-full border rounded p-2 mb-3" placeholder="Your name">
 
     <label class="block mb-2 font-semibold">Password:</label>
     <input id="password" type="password" class="w-full border rounded p-2 mb-4" placeholder="Club password">
 
-    <div id="choices" class="mb-4"></div>
+    <div class="mb-4">
+      <h3 class="font-semibold mb-2">📖 Available Books (drag to prioritize):</h3>
+      <div id="available-books" class="min-h-[100px] border-2 border-dashed border-gray-300 rounded p-3 bg-gray-50"></div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 mb-4">
+      <div>
+        <h3 class="font-semibold mb-2">🥇 First Priority:</h3>
+        <div id="first-priority" class="min-h-[80px] border-2 border-dashed border-blue-300 rounded p-3 bg-blue-50 drop-zone"></div>
+      </div>
+      <div>
+        <h3 class="font-semibold mb-2">🥈 Second Priority:</h3>
+        <div id="second-priority" class="min-h-[80px] border-2 border-dashed border-green-300 rounded p-3 bg-green-50 drop-zone"></div>
+      </div>
+    </div>
 
     <button id="voteBtn" class="bg-blue-600 text-white w-full py-2 rounded-lg hover:bg-blue-700">Submit Vote</button>
 
     <p id="status" class="text-sm text-gray-600 mt-3"></p>
   </div>
 
-  <div class="mt-6 w-full max-w-md">
+  <div class="mt-6 w-full max-w-3xl">
     <h2 class="font-bold mb-2">Members who have voted:</h2>
     <ul id="voterList" class="list-disc ml-6 text-sm text-gray-700"></ul>
   </div>
 
   <script>
     const API = "https://bookbook-1vj9.onrender.com";
+    let allBooks = [];
 
     async function loadBooks() {
       const res = await fetch(`${API}/books`);
-      const books = await res.json();
+      allBooks = await res.json();
+      renderAvailableBooks();
+    }
 
-      let html = `<h3 class="font-semibold mb-2">First Choice:</h3>`;
-      books.forEach(b => {
-        html += `<label class="block mb-1 first-label">
-                    <input type="radio" name="first" value="${b}" class="first-choice mr-2"> ${b}
-                 </label>`;
+    function renderAvailableBooks() {
+      const container = document.getElementById("available-books");
+      container.innerHTML = '';
+      allBooks.forEach(book => {
+        const bookEl = createBookElement(book);
+        container.appendChild(bookEl);
+      });
+    }
+
+    function createBookElement(book) {
+      const div = document.createElement('div');
+      div.className = 'book-item bg-white border border-gray-300 rounded px-3 py-2 mb-2 cursor-move hover:bg-gray-100 transition';
+      div.draggable = true;
+      div.textContent = book;
+      div.dataset.book = book;
+
+      div.addEventListener('dragstart', (e) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', book);
+        div.classList.add('opacity-50');
       });
 
-      html += `<h3 class="font-semibold mt-4 mb-2">Second Choice:</h3>`;
-      books.forEach(b => {
-        html += `<label class="block mb-1 second-label">
-                    <input type="radio" name="second" value="${b}" class="second-choice mr-2"> ${b}
-                 </label>`;
+      div.addEventListener('dragend', (e) => {
+        div.classList.remove('opacity-50');
       });
 
-      document.getElementById("choices").innerHTML = html;
+      return div;
+    }
 
-      const firstChoices = document.querySelectorAll(".first-choice");
-      const secondChoices = document.querySelectorAll(".second-choice");
-      const firstLabels = document.querySelectorAll(".first-label");
-      const secondLabels = document.querySelectorAll(".second-label");
+    function setupDropZones() {
+      const dropZones = document.querySelectorAll('.drop-zone');
+      
+      dropZones.forEach(zone => {
+        zone.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          zone.classList.add('border-solid', 'bg-opacity-70');
+        });
 
-      function updateSecondOptions() {
-        const selectedFirst = document.querySelector("input[name='first']:checked")?.value;
-        secondChoices.forEach((input, i) => {
-          if (input.value === selectedFirst) {
-            input.disabled = true;
-            secondLabels[i].classList.add("text-gray-400", "cursor-not-allowed");
+        zone.addEventListener('dragleave', (e) => {
+          zone.classList.remove('border-solid', 'bg-opacity-70');
+        });
+
+        zone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          zone.classList.remove('border-solid', 'bg-opacity-70');
+          
+          const book = e.dataTransfer.getData('text/plain');
+          
+          // Remove book from its current location
+          const existingBook = zone.querySelector('.book-item');
+          if (existingBook) {
+            // Return existing book to available books
+            document.getElementById('available-books').appendChild(existingBook);
+          }
+
+          // Find and move the dragged book
+          const draggedBook = Array.from(document.querySelectorAll('.book-item')).find(el => 
+            el.dataset.book === book && el.classList.contains('opacity-50')
+          );
+          
+          if (draggedBook) {
+            zone.appendChild(draggedBook);
           } else {
-            input.disabled = false;
-            secondLabels[i].classList.remove("text-gray-400", "cursor-not-allowed");
+            // If we can't find the dragged element, create a new one
+            const bookEl = createBookElement(book);
+            zone.appendChild(bookEl);
           }
         });
-      }
+      });
 
-      function updateFirstOptions() {
-        const selectedSecond = document.querySelector("input[name='second']:checked")?.value;
-        firstChoices.forEach((input, i) => {
-          if (input.value === selectedSecond) {
-            input.disabled = true;
-            firstLabels[i].classList.add("text-gray-400", "cursor-not-allowed");
-          } else {
-            input.disabled = false;
-            firstLabels[i].classList.remove("text-gray-400", "cursor-not-allowed");
-          }
-        });
-      }
+      // Make available books area also a drop zone
+      const availableZone = document.getElementById('available-books');
+      availableZone.classList.add('drop-zone');
+      
+      availableZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+      });
 
-      firstChoices.forEach(input => input.addEventListener("change", updateSecondOptions));
-      secondChoices.forEach(input => input.addEventListener("change", updateFirstOptions));
+      availableZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const book = e.dataTransfer.getData('text/plain');
+        
+        // Find the dragged book element
+        const draggedBook = Array.from(document.querySelectorAll('.book-item')).find(el => 
+          el.dataset.book === book && el.classList.contains('opacity-50')
+        );
+        
+        if (draggedBook && draggedBook.parentElement.id !== 'available-books') {
+          // Move it back to available books
+          availableZone.appendChild(draggedBook);
+        }
+      });
     }
 
     async function loadVoters() {
@@ -95,13 +157,17 @@
     async function submitVote() {
       const name = document.getElementById("name").value.trim();
       const password = document.getElementById("password").value.trim();
-      const first = document.querySelector("input[name='first']:checked")?.value;
-      const second = document.querySelector("input[name='second']:checked")?.value;
+      
+      const firstEl = document.querySelector("#first-priority .book-item");
+      const secondEl = document.querySelector("#second-priority .book-item");
+      
+      const first = firstEl?.dataset.book;
+      const second = secondEl?.dataset.book;
 
       const status = document.getElementById("status");
 
       if (!name || !password || !first || !second) {
-        status.textContent = "⚠️ Please fill out everything.";
+        status.textContent = "⚠️ Please fill out everything and drag books to both priority slots.";
         return;
       }
 
@@ -122,7 +188,9 @@
     document.getElementById("voteBtn").onclick = submitVote;
 
     // Initial load
-    loadBooks();
+    loadBooks().then(() => {
+      setupDropZones();
+    });
     loadVoters();
   </script>
 </body>
