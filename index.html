@@ -11,8 +11,8 @@
 
 <div class="w-full max-w-3xl mb-6">
 
-  <!-- Voting panel -->
-  <div id="vote-section" class="bg-white p-6 rounded-xl shadow-md mb-4">
+  <!-- Voting Section -->
+  <div id="vote-section" class="bg-white p-6 rounded-xl shadow-md mb-6">
     <label>Your Name:</label>
     <input id="name" class="w-full border rounded p-2 mb-2">
 
@@ -35,34 +35,35 @@
 
     <button id="voteBtn" class="bg-blue-600 text-white w-full py-2 rounded">Submit Vote</button>
     <p id="status" class="text-sm mt-2 text-gray-600"></p>
+
+    <div class="bg-gray-50 mt-4 p-3 rounded">
+      <h3 class="font-semibold">Members Who Voted</h3>
+      <ul id="voter-list" class="list-disc ml-6"></ul>
+    </div>
   </div>
 
-  <!-- Voters -->
-  <div class="bg-white p-6 rounded-xl shadow-md mb-6">
-    <h3>Members Who Voted</h3>
-    <ul id="voter-list" class="list-disc ml-6"></ul>
-  </div>
-
-  <!-- Results table -->
+  <!-- Results Section -->
   <div id="results-container" class="bg-white p-6 rounded-xl shadow-md hidden">
-    <h3>📊 Voting Results</h3>
+    <h3 class="text-xl font-semibold mb-3">📊 Voting Results</h3>
     <table class="w-full border border-gray-300 rounded">
       <thead class="bg-gray-200">
         <tr>
-          <th class="border px-2 py-1">Book</th>
-          <th class="border px-2 py-1">Voters (Priority)</th>
+          <th class="border px-2 py-1 text-left">Book</th>
+          <th class="border px-2 py-1 text-left">Points</th>
+          <th class="border px-2 py-1 text-left">Voters (Priority)</th>
         </tr>
       </thead>
       <tbody id="results-body"></tbody>
     </table>
   </div>
+
 </div>
 
 <script>
 const API = "https://bookbook-1vj9.onrender.com";
 let allBooks = [];
 
-// Load books
+// ---------------- Load books ----------------
 async function loadBooks() {
   const res = await fetch(`${API}/books`);
   allBooks = (await res.json()).map(b => ({id: b.id, title: b.title}));
@@ -89,7 +90,7 @@ function renderAvailableBooks() {
   });
 }
 
-// Setup drop zones
+// ---------------- Drop zones ----------------
 function setupDropZones() {
   const zones = document.querySelectorAll(".drop-zone");
   zones.forEach(z => {
@@ -103,12 +104,13 @@ function setupDropZones() {
 
       const existing = z.querySelector(".book-item");
       if (existing) document.getElementById("available-books").appendChild(existing);
+
       z.appendChild(dragged);
     });
   });
 }
 
-// Submit vote
+// ---------------- Submit vote ----------------
 async function submitVote() {
   const name = document.getElementById("name").value.trim();
   const password = document.getElementById("password").value.trim();
@@ -122,8 +124,8 @@ async function submitVote() {
 
   const body = {
     name, password,
-    first_choice_id: firstEl.dataset.id,
-    second_choice_id: secondEl.dataset.id
+    first_choice_id: parseInt(firstEl.dataset.id),
+    second_choice_id: parseInt(secondEl.dataset.id)
   };
 
   try {
@@ -142,7 +144,7 @@ async function submitVote() {
   }
 }
 
-// Load voters
+// ---------------- Load voters ----------------
 async function loadVoters() {
   try {
     const res = await fetch(`${API}/voters`);
@@ -157,41 +159,63 @@ async function loadVoters() {
   } catch(e) { console.error(e); }
 }
 
-// Load results
+// ---------------- Load results ----------------
 async function loadResults() {
   try {
     const res = await fetch(`${API}/results`);
     const results = await res.json();
     const tbody = document.getElementById("results-body");
     tbody.innerHTML = '';
-    for (const id in results) {
-      const r = results[id];
-      const voters = r.votes.map(v => `${v.name} (${v.priority})`).join(", ");
+
+    const summaryArr = Object.values(results).map(r => {
+      const points = r.votes.reduce((sum, v) => sum + (v.priority === 1 ? 2 : 1), 0);
+      return { title: r.title, votes: r.votes, points };
+    });
+
+    summaryArr.sort((a, b) => b.points - a.points);
+    const topScore = summaryArr.length > 0 ? summaryArr[0].points : 0;
+
+    summaryArr.forEach(r => {
+      const voters = r.votes.map(v => `${v.name} (${v.priority})`).join(", ") || "—";
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td class="border px-2 py-1">${r.title}</td><td class="border px-2 py-1">${voters}</td>`;
+      tr.className = r.points === topScore ? "bg-yellow-100 font-semibold" : "";
+      tr.innerHTML = `
+        <td class="border px-2 py-1">${r.title}</td>
+        <td class="border px-2 py-1">${r.points}</td>
+        <td class="border px-2 py-1">${voters}</td>
+      `;
       tbody.appendChild(tr);
-    }
-  } catch(e) { console.error(e); }
+    });
+  } catch(e) { console.error("Error loading results:", e); }
 }
 
-// Check voting status
-async function checkVotingStatus() {
+// ---------------- Update voting mode ----------------
+async function updateVotingMode() {
   try {
     const res = await fetch(`${API}/voting_status`);
-    const {voting_open} = await res.json();
-    document.getElementById("vote-section").style.display = voting_open ? "block" : "none";
-    document.getElementById("results-container").style.display = voting_open ? "none" : "block";
-    loadResults();
-  } catch(e) { console.error(e); }
+    const data = await res.json();
+    const open = data.voting_open;
+
+    document.getElementById("vote-section").style.display = open ? "block" : "none";
+    document.getElementById("results-container").style.display = open ? "none" : "block";
+
+    if (!open) {
+      loadResults();
+    } else {
+      loadBooks();
+      loadVoters();
+    }
+  } catch(e) { console.error("Error fetching voting status:", e); }
 }
 
-// Init
+// ---------------- Initialize ----------------
 loadBooks().then(setupDropZones);
 loadVoters();
-checkVotingStatus();
-setInterval(checkVotingStatus, 5000);
+updateVotingMode();
+setInterval(updateVotingMode, 5000);
 
 document.getElementById("voteBtn").onclick = submitVote;
 </script>
+
 </body>
 </html>
