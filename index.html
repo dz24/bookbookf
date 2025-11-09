@@ -59,7 +59,6 @@
     const API = "https://bookbook-1vj9.onrender.com";
     let allBooks = [];
 
-    // ---------------- Load books ----------------
     async function loadBooks() {
       const res = await fetch(`${API}/books`);
       const data = await res.json();
@@ -86,12 +85,10 @@
         e.dataTransfer.setData('text/plain', id);
         div.classList.add('dragging');
       });
-
       div.addEventListener('dragend', e => div.classList.remove('dragging'));
       return div;
     }
 
-    // ---------------- Drag & Drop ----------------
     function setupDropZones() {
       const dropZones = document.querySelectorAll('.drop-zone');
       dropZones.forEach(zone => {
@@ -112,7 +109,6 @@
       });
     }
 
-    // ---------------- Submit Vote ----------------
     async function submitVote() {
       const name = document.getElementById("name").value.trim();
       const password = document.getElementById("password").value.trim();
@@ -127,20 +123,23 @@
         return;
       }
 
-      const res = await fetch(`${API}/vote`, {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({ name, password, first_choice_id:first_id, second_choice_id:second_id })
-      });
-
-      const data = await res.json();
-      if (data.error) status.textContent = `❌ ${data.error}`;
-      else status.textContent = "✅ Vote submitted!";
+      try {
+        const res = await fetch(`${API}/vote`, {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({ name, password, first_choice_id:first_id, second_choice_id:second_id })
+        });
+        const data = await res.json();
+        if (data.error) status.textContent = `❌ ${data.error}`;
+        else status.textContent = "✅ Vote submitted!";
+      } catch (e) {
+        status.textContent = "❌ Error submitting vote";
+        console.error(e);
+      }
     }
 
     document.getElementById("voteBtn").onclick = submitVote;
 
-    // ---------------- Voting State Polling ----------------
     async function checkVotingStatus() {
       try {
         const res = await fetch(`${API}/voting_status`);
@@ -161,26 +160,32 @@
       }
     }
 
-    // ---------------- Load Results ----------------
     async function loadResults() {
-      const res = await fetch(`${API}/admin/results?password=public`);
-      const results = await res.json();
-      const tbody = document.getElementById("results-body");
-      tbody.innerHTML = '';
+      try {
+        const res = await fetch(`${API}/admin/results?password=public`);
+        if (!res.ok) {
+          console.error("Failed to fetch results:", await res.text());
+          return;
+        }
+        const results = await res.json();
+        const tbody = document.getElementById("results-body");
+        tbody.innerHTML = '';
 
-      for (const id in results) {
-        const r = results[id];
-        const voters = (r.votes || []).map(v => `${v.name} (${v.priority})`).join(", ");
-        const tr = document.createElement("tr");
-        tr.innerHTML = `<td class="border px-2 py-1">${r.title}</td><td class="border px-2 py-1">${voters}</td>`;
-        tbody.appendChild(tr);
+        for (const id in results) {
+          const r = results[id];
+          const voters = (r.votes || []).map(v => `${v.name} (${v.priority})`).join(", ");
+          const tr = document.createElement("tr");
+          tr.innerHTML = `<td class="border px-2 py-1">${r.title}</td><td class="border px-2 py-1">${voters}</td>`;
+          tbody.appendChild(tr);
+        }
+      } catch(e) {
+        console.error("Error loading results:", e);
       }
     }
 
-    // ---------------- Initial Load ----------------
     loadBooks().then(setupDropZones);
     checkVotingStatus();
-    setInterval(checkVotingStatus, 5000); // poll every 5s
+    setInterval(checkVotingStatus, 5000);
   </script>
 </body>
 </html>
