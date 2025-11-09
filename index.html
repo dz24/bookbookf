@@ -2,19 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Book Book Club</title>
+  <title>Book Book Club Voting</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col items-center justify-center p-4">
+<body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col items-center justify-start p-6">
 
-  <h1 class="text-3xl font-bold mb-4">📚 Book Book Club Voting</h1>
+  <h1 class="text-3xl font-bold mb-6">📚 Book Book Club Voting</h1>
 
   <div id="vote-section" class="bg-white p-6 rounded-xl shadow-md w-full max-w-md">
     <label class="block mb-2 font-semibold">Your Name:</label>
     <input id="name" class="w-full border rounded p-2 mb-3" placeholder="Your name">
 
     <label class="block mb-2 font-semibold">Password:</label>
-    <input id="password" type="password" class="w-full border rounded p-2 mb-3" placeholder="Club password">
+    <input id="password" type="password" class="w-full border rounded p-2 mb-4" placeholder="Club password">
 
     <div id="choices" class="mb-4"></div>
 
@@ -27,65 +27,103 @@
     <h2 class="font-bold mb-2">Members who have voted:</h2>
     <ul id="voterList" class="list-disc ml-6 text-sm text-gray-700"></ul>
   </div>
-<script>
-  const API = "https://bookbook-1vj9.onrender.com";
 
-async function loadBooks() {
-  const res = await fetch(`${API}/books`);
-  const books = await res.json();
+  <script>
+    const API = "https://bookbook-1vj9.onrender.com";
 
-  let html = `<h3 class="font-semibold mb-2">First Choice:</h3>`;
-  books.forEach(b => {
-    html += `<label class="block mb-1 first-label">
-                <input type="radio" name="first" value="${b}" class="first-choice mr-2"> ${b}
-             </label>`;
-  });
+    async function loadBooks() {
+      const res = await fetch(`${API}/books`);
+      const books = await res.json();
 
-  html += `<h3 class="font-semibold mt-4 mb-2">Second Choice:</h3>`;
-  books.forEach(b => {
-    html += `<label class="block mb-1 second-label">
-                <input type="radio" name="second" value="${b}" class="second-choice mr-2"> ${b}
-             </label>`;
-  });
+      let html = `<h3 class="font-semibold mb-2">First Choice:</h3>`;
+      books.forEach(b => {
+        html += `<label class="block mb-1 first-label">
+                    <input type="radio" name="first" value="${b}" class="first-choice mr-2"> ${b}
+                 </label>`;
+      });
 
-  document.getElementById("choices").innerHTML = html;
+      html += `<h3 class="font-semibold mt-4 mb-2">Second Choice:</h3>`;
+      books.forEach(b => {
+        html += `<label class="block mb-1 second-label">
+                    <input type="radio" name="second" value="${b}" class="second-choice mr-2"> ${b}
+                 </label>`;
+      });
 
-  // Add event listeners to handle disabling
-  const firstChoices = document.querySelectorAll(".first-choice");
-  const secondChoices = document.querySelectorAll(".second-choice");
-  const firstLabels = document.querySelectorAll(".first-label");
-  const secondLabels = document.querySelectorAll(".second-label");
+      document.getElementById("choices").innerHTML = html;
 
-  function updateSecondOptions() {
-    const selectedFirst = document.querySelector("input[name='first']:checked")?.value;
-    secondChoices.forEach((input, i) => {
-      if (input.value === selectedFirst) {
-        input.disabled = true;
-        secondLabels[i].classList.add("text-gray-400", "cursor-not-allowed");
-      } else {
-        input.disabled = false;
-        secondLabels[i].classList.remove("text-gray-400", "cursor-not-allowed");
+      const firstChoices = document.querySelectorAll(".first-choice");
+      const secondChoices = document.querySelectorAll(".second-choice");
+      const firstLabels = document.querySelectorAll(".first-label");
+      const secondLabels = document.querySelectorAll(".second-label");
+
+      function updateSecondOptions() {
+        const selectedFirst = document.querySelector("input[name='first']:checked")?.value;
+        secondChoices.forEach((input, i) => {
+          if (input.value === selectedFirst) {
+            input.disabled = true;
+            secondLabels[i].classList.add("text-gray-400", "cursor-not-allowed");
+          } else {
+            input.disabled = false;
+            secondLabels[i].classList.remove("text-gray-400", "cursor-not-allowed");
+          }
+        });
       }
-    });
-  }
 
-  function updateFirstOptions() {
-    const selectedSecond = document.querySelector("input[name='second']:checked")?.value;
-    firstChoices.forEach((input, i) => {
-      if (input.value === selectedSecond) {
-        input.disabled = true;
-        firstLabels[i].classList.add("text-gray-400", "cursor-not-allowed");
-      } else {
-        input.disabled = false;
-        firstLabels[i].classList.remove("text-gray-400", "cursor-not-allowed");
+      function updateFirstOptions() {
+        const selectedSecond = document.querySelector("input[name='second']:checked")?.value;
+        firstChoices.forEach((input, i) => {
+          if (input.value === selectedSecond) {
+            input.disabled = true;
+            firstLabels[i].classList.add("text-gray-400", "cursor-not-allowed");
+          } else {
+            input.disabled = false;
+            firstLabels[i].classList.remove("text-gray-400", "cursor-not-allowed");
+          }
+        });
       }
-    });
-  }
 
-  firstChoices.forEach(input => input.addEventListener("change", updateSecondOptions));
-  secondChoices.forEach(input => input.addEventListener("change", updateFirstOptions));
-}
-</script>
+      firstChoices.forEach(input => input.addEventListener("change", updateSecondOptions));
+      secondChoices.forEach(input => input.addEventListener("change", updateFirstOptions));
+    }
 
+    async function loadVoters() {
+      const res = await fetch(`${API}/voters`);
+      const voters = await res.json();
+      document.getElementById("voterList").innerHTML = voters.map(v => `<li>${v}</li>`).join("");
+    }
+
+    async function submitVote() {
+      const name = document.getElementById("name").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const first = document.querySelector("input[name='first']:checked")?.value;
+      const second = document.querySelector("input[name='second']:checked")?.value;
+
+      const status = document.getElementById("status");
+
+      if (!name || !password || !first || !second) {
+        status.textContent = "⚠️ Please fill out everything.";
+        return;
+      }
+
+      const res = await fetch(`${API}/vote`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ name, password, first_choice: first, second_choice: second })
+      });
+
+      const data = await res.json();
+      if (data.error) status.textContent = `❌ ${data.error}`;
+      else {
+        status.textContent = "✅ Vote submitted!";
+        loadVoters();
+      }
+    }
+
+    document.getElementById("voteBtn").onclick = submitVote;
+
+    // Initial load
+    loadBooks();
+    loadVoters();
+  </script>
 </body>
 </html>
