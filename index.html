@@ -9,6 +9,7 @@
 
   <h1 class="text-3xl font-bold mb-6">📚 Book Book Club Voting</h1>
 
+  <!-- Voting Panel -->
   <div id="voting-container">
     <div id="vote-section" class="bg-white p-6 rounded-xl shadow-md w-full max-w-3xl mb-6">
       <label class="block mb-2 font-semibold">Your Name:</label>
@@ -38,12 +39,27 @@
     </div>
   </div>
 
+  <!-- Results Table (hidden until voting closed) -->
+  <div id="results-container" class="bg-white p-6 rounded-xl shadow-md w-full max-w-3xl mb-6 hidden">
+    <h3 class="font-semibold mb-2">📊 Voting Results</h3>
+    <table class="w-full border border-gray-300 rounded">
+      <thead class="bg-gray-200">
+        <tr>
+          <th class="border px-2 py-1">Book</th>
+          <th class="border px-2 py-1">Voters (Priority)</th>
+        </tr>
+      </thead>
+      <tbody id="results-body"></tbody>
+    </table>
+  </div>
+
   <a href="admin.html" class="text-blue-600 underline mb-6">Admin login</a>
 
   <script>
     const API = "https://bookbook-1vj9.onrender.com";
     let allBooks = [];
 
+    // ---------------- Load books ----------------
     async function loadBooks() {
       const res = await fetch(`${API}/books`);
       const data = await res.json();
@@ -75,6 +91,7 @@
       return div;
     }
 
+    // ---------------- Drag & Drop ----------------
     function setupDropZones() {
       const dropZones = document.querySelectorAll('.drop-zone');
       dropZones.forEach(zone => {
@@ -95,6 +112,7 @@
       });
     }
 
+    // ---------------- Submit Vote ----------------
     async function submitVote() {
       const name = document.getElementById("name").value.trim();
       const password = document.getElementById("password").value.trim();
@@ -122,15 +140,45 @@
 
     document.getElementById("voteBtn").onclick = submitVote;
 
-    // -------- Check voting state ----------
+    // ---------------- Voting State Polling ----------------
     async function checkVotingStatus() {
       try {
         const res = await fetch(`${API}/voting_status`);
         const data = await res.json();
-        document.getElementById("voting-container").style.display = data.voting_open ? "block" : "none";
-      } catch(e) { console.error("Failed to fetch voting status", e); }
+        const voteContainer = document.getElementById("voting-container");
+        const resultsContainer = document.getElementById("results-container");
+
+        if (data.voting_open) {
+          voteContainer.style.display = "block";
+          resultsContainer.style.display = "none";
+        } else {
+          voteContainer.style.display = "none";
+          resultsContainer.style.display = "block";
+          loadResults();
+        }
+      } catch(e) {
+        console.error("Failed to fetch voting status", e);
+      }
     }
 
+    // ---------------- Load Results ----------------
+    async function loadResults() {
+      // You can create a public read-only endpoint on the backend or use the admin password
+      const res = await fetch(`${API}/admin/results?password=admin123`);
+      const results = await res.json();
+      const tbody = document.getElementById("results-body");
+      tbody.innerHTML = '';
+
+      for (const id in results) {
+        const r = results[id];
+        const voters = (r.votes || []).map(v => `${v.name} (${v.priority})`).join(", ");
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td class="border px-2 py-1">${r.title}</td><td class="border px-2 py-1">${voters}</td>`;
+        tbody.appendChild(tr);
+      }
+    }
+
+    // ---------------- Initial Load ----------------
     loadBooks().then(setupDropZones);
     checkVotingStatus();
     setInterval(checkVotingStatus, 5000); // poll every 5s
