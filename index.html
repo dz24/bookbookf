@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>📚 Book Club Voting</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -40,6 +40,12 @@
         class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition">
         Submit Vote
       </button>
+
+      <!-- Voter list -->
+      <div class="mt-6">
+        <h3 class="text-lg font-semibold mb-2">🗳️ Members who have voted</h3>
+        <ul id="voterList" class="list-disc ml-6 text-gray-700"></ul>
+      </div>
     </div>
 
     <!-- Results Section -->
@@ -70,6 +76,7 @@
         document.getElementById("voting-section").classList.remove("hidden");
         document.getElementById("results-section").classList.add("hidden");
         loadBooks();
+        loadVoters();
       } else {
         document.getElementById("voting-section").classList.add("hidden");
         document.getElementById("results-section").classList.remove("hidden");
@@ -85,6 +92,13 @@
       container.innerHTML = "";
       allBooks.forEach(book => container.appendChild(createBookElement(book)));
       setupDragAndDrop();
+    }
+
+    async function loadVoters() {
+      const res = await fetch(`${API}/voters`);
+      const voters = await res.json();
+      document.getElementById("voterList").innerHTML =
+        voters.map(v => `<li>${v}</li>`).join("");
     }
 
     function createBookElement(book) {
@@ -119,7 +133,6 @@
           zone.classList.remove("drag-over");
           const bookId = e.dataTransfer.getData("text/plain");
           const draggedEl = document.querySelector(`[data-id='${bookId}']`);
-
           if (zone.id !== "available-books" && zone.children.length > 0) {
             document.getElementById("available-books").appendChild(zone.children[0]);
           }
@@ -156,35 +169,44 @@
         body: JSON.stringify({ name, first_choice: first, second_choice: second })
       });
 
-      if (res.ok) alert("✅ Vote submitted!");
-      else alert("❌ Error submitting vote.");
+      if (res.ok) {
+        alert("✅ Vote submitted!");
+        loadVoters();
+      } else {
+        alert("❌ Error submitting vote.");
+      }
     });
 
     async function showResults() {
-      const res = await fetch(`${API}/votes`);
-      const votes = await res.json();
+      const [votesRes, booksRes] = await Promise.all([
+        fetch(`${API}/votes`),
+        fetch(`${API}/books`)
+      ]);
+      const votes = await votesRes.json();
+      const books = await booksRes.json();
 
       const points = {};
       const voters = {};
+      const bookMap = {};
+      books.forEach(b => (bookMap[b.id.toString()] = b.title));
 
       votes.forEach(vote => {
-        if (!points[vote.first_choice]) points[vote.first_choice] = 0;
-        if (!points[vote.second_choice]) points[vote.second_choice] = 0;
-        points[vote.first_choice] += 2;
-        points[vote.second_choice] += 1;
+        const f = vote.first_choice.toString();
+        const s = vote.second_choice.toString();
+        if (!points[f]) points[f] = 0;
+        if (!points[s]) points[s] = 0;
+        points[f] += 2;
+        points[s] += 1;
 
-        if (!voters[vote.first_choice]) voters[vote.first_choice] = [];
-        if (!voters[vote.second_choice]) voters[vote.second_choice] = [];
-        voters[vote.first_choice].push(`${vote.name} (2)`);
-        voters[vote.second_choice].push(`${vote.name} (1)`);
+        if (!voters[f]) voters[f] = [];
+        if (!voters[s]) voters[s] = [];
+        voters[f].push(`${vote.name} (2)`);
+        voters[s].push(`${vote.name} (1)`);
       });
-
-      const bookMap = {};
-      allBooks.forEach(b => (bookMap[b.id] = b.title));
 
       const sorted = Object.keys(points)
         .map(id => ({
-          book: bookMap[id],
+          book: bookMap[id] || "Unknown",
           pts: points[id],
           voters: (voters[id] || []).join(", ")
         }))
