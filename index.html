@@ -178,17 +178,18 @@
       const adminPassword = document.getElementById("admin-password").value.trim();
       if (!adminPassword) return alert("Enter admin password");
 
-      if (adminPassword !== "admin123") return alert("Invalid admin password");
-
-      const res = await fetch(`${API}/admin/results`);
+      // Fetch with password in query parameter
+      const res = await fetch(`${API}/admin/results?password=${encodeURIComponent(adminPassword)}`);
       const results = await res.json();
+
+      if (results.error) return alert(results.error); // handle 403 etc.
 
       const tbody = document.getElementById("results-body");
       tbody.innerHTML = '';
 
       for (const id in results) {
         const r = results[id];
-        const voters = r.votes.map(v => `${v.name} (${v.priority})`).join(", ");
+        const voters = (r.votes || []).map(v => `${v.name} (${v.priority})`).join(", ");
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td class="border px-2 py-1">${r.title}</td>
