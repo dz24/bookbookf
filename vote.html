@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>book book — Vote</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 flex flex-col items-center py-10">
+  <h1 class="text-3xl font-bold mb-6">Vote for the next book</h1>
+
+  <form id="vote-form" class="bg-white shadow-md rounded-xl p-6 w-80">
+    <input id="name" type="text" placeholder="Your name" class="w-full mb-3 p-2 border rounded" required>
+    <input id="password" type="password" placeholder="Password" class="w-full mb-3 p-2 border rounded" required>
+    <select id="book" class="w-full mb-3 p-2 border rounded"></select>
+    <button class="bg-blue-600 text-white w-full py-2 rounded hover:bg-blue-700" type="submit">Submit Vote</button>
+  </form>
+
+  <p id="msg" class="mt-4 text-lg font-medium text-center"></p>
+
+  <script>
+  const API = "https://bookbook-1vj9.onrender.com";
+
+  fetch(`${API}/books`).then(r => r.json()).then(books => {
+    const sel = document.getElementById("book");
+    books.forEach(b => {
+      const opt = document.createElement("option");
+      opt.value = b.id;
+      opt.textContent = b.title;
+      sel.appendChild(opt);
+    });
+  });
+
+  document.getElementById("vote-form").onsubmit = e => {
+    e.preventDefault();
+    fetch(`${API}/vote`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        name: document.getElementById("name").value,
+        password: document.getElementById("password").value,
+        book_id: document.getElementById("book").value
+      })
+    }).then(r => r.json()).then(data => {
+      document.getElementById("msg").textContent = data.message;
+    });
+  };
+  </script>
+</body>
+</html>

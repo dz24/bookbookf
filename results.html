@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>book book — Results</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 flex flex-col items-center py-10">
+  <h1 class="text-3xl font-bold mb-6">Voting Results</h1>
+  <div id="results" class="text-lg"></div>
+
+  <div class="mt-8 bg-white p-6 rounded-xl shadow-md">
+    <h2 class="font-semibold mb-2">Admin Reveal</h2>
+    <input id="admin-pass" type="password" placeholder="Admin password" class="border p-2 rounded mb-2 w-full">
+    <button id="reveal" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full">Reveal Results</button>
+  </div>
+
+  <script>
+  const API = "https://bookbook-1vj9.onrender.com";
+
+  function loadResults() {
+    fetch(`${API}/results`).then(r => r.json()).then(data => {
+      const div = document.getElementById("results");
+      if (data.status === "hidden") {
+        div.textContent = data.message;
+      } else {
+        div.innerHTML = "<ul class='list-disc pl-6'>" +
+          data.results.map(r => `<li>${r.title}: <b>${r.votes}</b> votes</li>`).join("") +
+          "</ul>";
+      }
+    });
+  }
+
+  loadResults();
+
+  document.getElementById("reveal").onclick = () => {
+    fetch(`${API}/reveal`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({admin_password: document.getElementById("admin-pass").value})
+    }).then(r=>r.json()).then(data=>{
+      if (data.status === "visible") {
+        const div = document.getElementById("results");
+        div.innerHTML = "<ul class='list-disc pl-6'>" +
+          data.results.map(r => `<li>${r.title}: <b>${r.votes}</b> votes</li>`).join("") +
+          "</ul>";
+      } else {
+        alert(data.message);
+      }
+    });
+  };
+  </script>
+</body>
+</html>
