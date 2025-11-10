@@ -65,11 +65,27 @@
 
     function createBookElement(book) {
       const div = document.createElement("div");
-      div.className = "book-item bg-white border border-gray-300 rounded px-3 py-2 mb-2 cursor-move hover:bg-gray-100 transition";
+      div.className =
+        "book-item bg-white border border-gray-300 rounded px-3 py-2 mb-2 cursor-move hover:bg-gray-100 transition";
       div.draggable = true;
-      div.textContent = book.title;
       div.dataset.id = book.id;
       div.dataset.book = book.title;
+
+      // Create hyperlink + author
+      const a = document.createElement("a");
+      a.href = book.link || "#";
+      a.target = "_blank";
+      a.className = "text-blue-600 font-semibold hover:underline";
+      a.textContent = book.title;
+
+      const author = document.createElement("span");
+      if (book.author) {
+        author.className = "text-gray-600 ml-2 text-sm italic";
+        author.textContent = `by ${book.author}`;
+      }
+
+      div.appendChild(a);
+      if (book.author) div.appendChild(author);
 
       div.addEventListener("dragstart", e => {
         e.dataTransfer.effectAllowed = "move";
@@ -199,6 +215,8 @@
 
       const results = books.map(b => ({
         title: b.title,
+        link: b.link,
+        author: b.author,
         points: points[b.id] || 0,
         voters: voters[b.id] || []
       }));
@@ -221,7 +239,12 @@
         const highlight = r.points === maxPoints ? "bg-yellow-100 font-bold" : "";
         html += `
           <tr class="${highlight}">
-            <td class="border px-4 py-2">${r.title}</td>
+            <td class="border px-4 py-2">
+              <a href="${r.link || '#'}" target="_blank" class="text-blue-600 hover:underline font-semibold">
+                ${r.title}
+              </a>
+              ${r.author ? `<div class='text-gray-600 text-sm italic'>by ${r.author}</div>` : ""}
+            </td>
             <td class="border px-4 py-2">${r.points}</td>
             <td class="border px-4 py-2 text-sm">${r.voters.join("<br>") || "-"}</td>
           </tr>
